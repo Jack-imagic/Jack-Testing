@@ -1,12 +1,13 @@
 import { Component } from '@angular/core';
-import { NavController, ActionSheetController, ToastController, Platform, LoadingController, Loading } from 'ionic-angular';
+import { ActionSheetController, ToastController, Platform, Loading } from 'ionic-angular';
 
 import { File } from '@ionic-native/file';
-import { Transfer, TransferObject } from '@ionic-native/transfer';
+import {Transfer} from '@ionic-native/transfer';
 import { FilePath } from '@ionic-native/file-path';
 import { Camera } from '@ionic-native/camera';
 
 declare var cordova: any;
+declare var FileTransferManager: any;
 
 @Component({
   selector: 'page-home',
@@ -15,31 +16,13 @@ declare var cordova: any;
 export class HomePage {
   lastImage: string = null;
   loading: Loading;
+  inProgress: boolean;
+  progressState: any;
 
-  constructor(public navCtrl: NavController, private camera: Camera, private transfer: Transfer, private file: File, private filePath: FilePath, public actionSheetCtrl: ActionSheetController, public toastCtrl: ToastController, public platform: Platform, public loadingCtrl: LoadingController) {
-     var FileTransferManager: any;
 
-    var uploader = FileTransferManager.init();
 
-    uploader.on('success', function(upload) {
-      console.log("upload: " + upload.id + " has been completed successfully");
-      console.log(upload.statusCode,upload.serverResponse);
-
-    });
-
-    uploader.on('progress', function(upload) {
-      console.log("uploading: " + upload.id + " progress: " + upload.progress + "%");
-
-    });
-
-    uploader.on('error', function(uploadException) {
-      if (uploadException.id) {
-        console.log("upload: " + uploadException.id + " has failed");
-      } else {
-        console.error("uploader caught an error: " + uploadException.error);
-      }
-    });
-
+  constructor(private camera: Camera, private transfer: Transfer, private file: File, private filePath: FilePath, public actionSheetCtrl: ActionSheetController, public toastCtrl: ToastController, public platform: Platform) {
+  this.inProgress = false;
   }
 
   public presentActionSheet() {
@@ -111,7 +94,7 @@ export class HomePage {
     });
   }
 
-  private presentToast(text) {
+  public presentToast(text) {
     let toast = this.toastCtrl.create({
       message: text,
       duration: 3000,
@@ -130,37 +113,33 @@ export class HomePage {
   }
 
   public uploadImage() {
-    // Destination URL
-    var url = "http://yoururl/upload.php";
 
-    // File for Upload
-    var targetPath = this.pathForImage(this.lastImage);
+    const uploader = FileTransferManager.init();
+    //background-upload-plugin
+    const payload = {
+      "id": "69",
+      "filePath": "file:///storage/emulated/0/DCIM/Camera/bigimage.jpg",
+      "fileKey": "",
+      "serverUrl": "http://172.30.46.97:5000"
 
-    // File name only
-    var filename = this.lastImage;
-
-    var options = {
-      fileKey: "file",
-      fileName: filename,
-      chunkedMode: false,
-      mimeType: "multipart/form-data",
-      params : {'fileName': filename}
     };
 
-    const fileTransfer: TransferObject = this.transfer.create();
+     uploader.startUpload(payload);
 
-    this.loading = this.loadingCtrl.create({
-      content: 'Uploading...',
-    });
-    this.loading.present();
 
-    // Use the FileTransfer to upload the image
-    fileTransfer.upload(targetPath, url, options).then(data => {
-      this.loading.dismissAll()
-      this.presentToast('Image succesful uploaded.');
-    }, err => {
-      this.loading.dismissAll()
-      this.presentToast('Error while uploading file.');
-    });
+      uploader.on('progress', (progressEvent) =>{
+        this.inProgress = true;
+        this.progressState = progressEvent.progress;
+      });
+
+      uploader.on('success', () => {
+        this.inProgress = false;
+        this.presentToast("Successfully uploaded!");
+      });
+
+      uploader.on('error', () => {
+        this.presentToast("Failed to upload!");
+      });
+
   }
 }
