@@ -17,7 +17,7 @@ export class HomePage {
   lastImage: string = null;
   loading: Loading;
   inProgress: boolean;
-  progressState: any;
+  progressState: number;
 
 
 
